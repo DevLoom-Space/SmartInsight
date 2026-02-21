@@ -1,0 +1,177 @@
+{% extends "base.html" %}
+{% block title %}Weather | SmartInsight{% endblock %}
+
+{% block content %}
+<div class="mb-4">
+  <div class="d-flex align-items-center justify-content-between">
+    <div>
+      <div class="text-muted small">Weather • Deep View</div>
+      <h2 class="fw-bold mb-0">{{ city }}</h2>
+    </div>
+    <a href="{% url 'dashboard_home' %}" class="text-decoration-none">← Back</a>
+  </div>
+
+  <form class="mt-3 d-flex gap-2" method="get">
+    <input class="form-control form-control-lg" name="city" value="{{ city }}" placeholder="Search city (e.g., Nairobi)" />
+    <button class="btn btn-dark btn-lg px-4">
+      <i class="bi bi-search me-1"></i>Search
+    </button>
+  </form>
+</div>
+
+{% if weather_error %}
+  <div class="alert alert-danger rounded-4 shadow-sm">{{ weather_error }}</div>
+{% else %}
+
+  <!-- Hero / Current conditions -->
+  <div class="bg-white rounded-4 shadow-sm p-4 p-md-5 mb-4 position-relative overflow-hidden">
+    <div class="row align-items-center g-4">
+      <div class="col-12 col-lg-7">
+        <div class="text-muted">Right now</div>
+
+        {% if weather %}
+          <div class="d-flex align-items-end gap-3 mt-1">
+            <div class="display-3 fw-bold lh-1">{{ weather.temp }}°</div>
+            <div class="pb-2">
+              <div class="text-muted">Feels like {{ weather.feels_like }}°C</div>
+              <div class="text-muted small">
+                Humidity {{ weather.humidity }}% • Wind {{ weather.wind_speed }}
+              </div>
+            </div>
+          </div>
+
+          <div class="row g-3 mt-3">
+            <div class="col-6 col-md-4">
+              <div class="border rounded-4 p-3 h-100">
+                <div class="text-muted small">Min</div>
+                <div class="fw-semibold fs-4">{{ weather.min_temp }}°C</div>
+              </div>
+            </div>
+            <div class="col-6 col-md-4">
+              <div class="border rounded-4 p-3 h-100">
+                <div class="text-muted small">Max</div>
+                <div class="fw-semibold fs-4">{{ weather.max_temp }}°C</div>
+              </div>
+            </div>
+            <div class="col-12 col-md-4">
+              <div class="border rounded-4 p-3 h-100">
+                <div class="text-muted small">Cloud cover</div>
+                <div class="fw-semibold fs-4">{{ weather.cloud_pct }}%</div>
+              </div>
+            </div>
+          </div>
+        {% else %}
+          <div class="text-muted mt-2">No data yet.</div>
+        {% endif %}
+      </div>
+
+      <div class="col-12 col-lg-5">
+        <div class="rounded-4 p-4 bg-light border">
+          <div class="fw-semibold">
+            <i class="bi bi-graph-up me-2"></i>Weekly outlook
+          </div>
+          <div class="text-muted small mt-1">
+            Max / Min temperature + precipitation trend
+          </div>
+          <div class="mt-3">
+            <canvas id="trendChart" height="160"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Photos strip -->
+  {% if photos %}
+    <div class="row g-3 mb-4">
+      {% for p in photos %}
+        <div class="col-12 col-md-4">
+          <div class="rounded-4 overflow-hidden shadow-sm bg-white photo-card">
+            <img
+              src="{{ p }}"
+              class="img-fluid"
+              style="height: 220px; width: 100%; object-fit: cover;"
+              alt="City photo"
+              loading="lazy"
+              referrerpolicy="no-referrer"
+              onerror="this.closest('.photo-card').remove();"
+            >
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+  {% endif %}
+
+  <!-- Trend list -->
+  <div class="bg-white rounded-4 shadow-sm p-4">
+    <div class="d-flex align-items-center justify-content-between mb-3">
+      <div class="fw-semibold fs-5">
+        <i class="bi bi-calendar3 me-2"></i>7-day breakdown
+      </div>
+      {% if trend_error %}
+        <div class="text-muted small">{{ trend_error }}</div>
+      {% endif %}
+    </div>
+
+    {% if trend %}
+      <div class="d-grid gap-2">
+        {% for d in trend %}
+          <div class="p-3 border rounded-4 d-flex align-items-center justify-content-between">
+            <div class="fw-semibold">{{ d.date }}</div>
+            <div class="text-muted">
+              Max {{ d.max }}° • Min {{ d.min }}° • Rain {{ d.precip }}mm
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+    {% else %}
+      <div class="text-muted">No forecast available.</div>
+    {% endif %}
+  </div>
+
+{% endif %}
+
+<!-- chart data -->
+{{ chart_labels|json_script:"labelsData" }}
+{{ chart_max|json_script:"maxData" }}
+{{ chart_min|json_script:"minData" }}
+{{ chart_precip|json_script:"precipData" }}
+
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script>
+  const labels = JSON.parse(document.getElementById("labelsData").textContent);
+  const maxData = JSON.parse(document.getElementById("maxData").textContent);
+  const minData = JSON.parse(document.getElementById("minData").textContent);
+  const precipData = JSON.parse(document.getElementById("precipData").textContent);
+
+  const ctx = document.getElementById("trendChart");
+  if (ctx && labels.length) {
+    new Chart(ctx, {
+      type: "line",
+      data: {
+        labels,
+        datasets: [
+          { label: "Max °C", data: maxData, tension: 0.35 },
+          { label: "Min °C", data: minData, tension: 0.35 },
+          { label: "Rain mm", data: precipData, tension: 0.35, yAxisID: "y2" },
+        ]
+      },
+      options: {
+        responsive: true,
+        plugins: { legend: { display: true } },
+        scales: {
+          y: { beginAtZero: false },
+          y2: {
+            beginAtZero: true,
+            position: "right",
+            grid: { drawOnChartArea: false }
+          }
+        }
+      }
+    });
+  }
+</script>
+{% endblock %}
