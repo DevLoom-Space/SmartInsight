@@ -10,3 +10,4 @@ urlpatterns = [
 
     path("history/clear/", views.clear_history, name="clear_history"),
 ]
+

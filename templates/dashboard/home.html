@@ -2,49 +2,105 @@
 {% block title %}Dashboard | SmartInsight{% endblock %}
 
 {% block content %}
-<div class="d-flex align-items-center justify-content-between mb-4">
-  <div>
-    <h2 class="fw-bold mb-1">Dashboard</h2>
-    <div class="text-muted">Your daily insights in one place.</div>
-  </div>
-</div>
 
-<div class="row g-3">
-  <!-- Weather card -->
-  <div class="col-12 col-lg-4">
-    <div class="bg-white rounded-4 shadow-sm p-4 h-100">
-      <div class="d-flex align-items-center justify-content-between">
-        <div class="fw-semibold fs-5">
-          <i class="bi bi-cloud-sun me-2"></i>Weather
+{# ===================== WEATHER HERO (MAIN) ===================== #}
+<div class="weather-hero rounded-4 shadow-soft p-4 p-md-5 mb-4 overflow-hidden position-relative
+  {% if weather_mode %}
+    is-{{ weather_mode }}
+  {% else %}
+    {% if is_rainy %}is-rainy
+    {% elif weather_data and weather_data.cloud_pct|default:0 >= 75 %}is-cloudy
+    {% elif weather_data and weather_data.temp|default:0 >= 27 %}is-sunny
+    {% else %}is-mild
+    {% endif %}
+  {% endif %}
+">
+
+  <div class="d-flex flex-column flex-lg-row align-items-start justify-content-between gap-4 position-relative" style="z-index:2;">
+    <div style="max-width:720px;">
+      <div class="text-muted small">Weather • Live</div>
+      <h2 class="fw-bold mb-1">{{ city }}</h2>
+
+      {% if weather_error %}
+        <div class="text-danger mt-2">{{ weather_error }}</div>
+      {% elif weather_data %}
+        <div class="d-flex align-items-end gap-3 mt-2">
+          <div class="display-3 fw-bold lh-1">{{ weather_data.temp }}°</div>
+          <div class="pb-2">
+            <div class="text-muted">Feels like {{ weather_data.feels_like }}°C</div>
+            <div class="text-muted small">
+              Humidity {{ weather_data.humidity }}% • Wind {{ weather_data.wind_speed }}
+            </div>
+          </div>
         </div>
-        <a class="text-decoration-none" href="{% url 'weather_detail' %}?city={{ city|urlencode }}">View more →</a>
-      </div>
 
-      <form class="mt-3 d-flex gap-2" method="get">
-        <input class="form-control" name="city" value="{{ city }}" placeholder="City (e.g., Nairobi)" />
+        <div class="mt-3 d-flex flex-wrap gap-2">
+          <span class="badge rounded-pill badge-glass">
+            ☁️ Cloud {{ weather_data.cloud_pct }}%
+          </span>
+          <span class="badge rounded-pill badge-glass">
+            🌡 Min {{ weather_data.min_temp }}°C
+          </span>
+          <span class="badge rounded-pill badge-glass">
+            🔥 Max {{ weather_data.max_temp }}°C
+          </span>
+        </div>
+
+        <div class="mt-4 p-3 rounded-4 bg-white card-soft">
+          <div class="fw-semibold mb-1">
+            <i class="bi bi-compass me-2"></i>Today’s tip
+          </div>
+          <div class="text-muted">{{ weather_tip }}</div>
+        </div>
+
+      {% else %}
+        <div class="text-muted mt-2">No data yet.</div>
+      {% endif %}
+    </div>
+
+    <div class="text-end ms-lg-auto">
+      <a class="text-decoration-none fw-semibold" href="{% url 'weather_detail' %}?city={{ city|urlencode }}">Deep view →</a>
+
+      <form class="mt-3 d-flex gap-2 justify-content-end" method="get">
+        <input class="form-control" name="city" value="{{ city }}" placeholder="Search city (e.g., Nairobi)" style="max-width:340px;" />
         <input type="hidden" name="zodiac" value="{{ zodiac }}">
         <button class="btn btn-dark">Check</button>
       </form>
-
-      <div class="mt-3">
-        {% if weather_error %}
-          <div class="text-danger">{{ weather_error }}</div>
-        {% elif weather_data %}
-          <div class="fs-6 text-muted">{{ city }}</div>
-          <div class="display-6 fw-bold">{{ weather_data.temp }}°C</div>
-          <div class="text-muted">
-            Humidity: {{ weather_data.humidity }}% • Wind: {{ weather_data.wind_speed }}
-          </div>
-        {% else %}
-          <div class="text-muted">No data yet.</div>
-        {% endif %}
-      </div>
     </div>
   </div>
 
-  <!-- Horoscope card -->
-  <div class="col-12 col-lg-4">
-    <div class="bg-white rounded-4 shadow-sm p-4 h-100">
+  {# ===================== WEATHER ANIMATION LAYER ===================== #}
+  <div class="wx-scene" aria-hidden="true">
+    <div class="wx-sun"></div>
+    <div class="wx-cloud wx-cloud-1"></div>
+    <div class="wx-cloud wx-cloud-2"></div>
+    <div class="wx-cloud wx-cloud-3"></div>
+
+    <div class="wx-rain">
+      {% for _ in "12345678901234567890" %}
+        <span class="drop"></span>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+
+
+{# ===================== DAILY BRIEF (OPTIONAL FEATURE) ===================== #}
+{% if daily_brief %}
+  <div class="bg-white rounded-4 shadow-soft p-4 mb-4 card-soft">
+    <div class="fw-semibold mb-1">
+      <i class="bi bi-lightbulb me-2"></i>Daily Brief
+    </div>
+    <div class="text-muted">{{ daily_brief }}</div>
+  </div>
+{% endif %}
+
+
+{# ===================== SECONDARY CARDS (Horoscope + Quote) ===================== #}
+<div class="row g-3">
+  <!-- Horoscope -->
+  <div class="col-12 col-lg-6">
+    <div class="bg-white rounded-4 shadow-soft p-4 h-100 card-soft">
       <div class="d-flex align-items-center justify-content-between">
         <div class="fw-semibold fs-5">
           <i class="bi bi-stars me-2"></i>Horoscope
@@ -53,7 +109,7 @@
       </div>
 
       <form class="mt-3 d-flex gap-2" method="get">
-        <input class="form-control" name="zodiac" value="{{ zodiac }}" placeholder="Zodiac (e.g., aries)" />
+        <input class="form-control" name="zodiac" value="{{ zodiac }}" placeholder="Zodiac (e.g., leo)" />
         <input type="hidden" name="city" value="{{ city }}">
         <button class="btn btn-dark">Load</button>
       </form>
@@ -62,10 +118,8 @@
         {% if horoscope_error %}
           <div class="text-danger">{{ horoscope_error }}</div>
         {% elif horoscope_data %}
-          <div class="text-muted">
-            {{ horoscope_data.zodiac|default:zodiac|title }}
-          </div>
-          <div class="mt-2">{{ horoscope_data.horoscope }}</div>
+          <div class="text-muted small">{{ zodiac|title }}</div>
+          <div class="mt-2">{{ horoscope_data.horoscope|truncatechars:260 }}</div>
         {% else %}
           <div class="text-muted">No data yet.</div>
         {% endif %}
@@ -73,9 +127,9 @@
     </div>
   </div>
 
-  <!-- Quote card -->
-  <div class="col-12 col-lg-4">
-    <div class="bg-white rounded-4 shadow-sm p-4 h-100">
+  <!-- Quote -->
+  <div class="col-12 col-lg-6">
+    <div class="bg-white rounded-4 shadow-soft p-4 h-100 card-soft">
       <div class="d-flex align-items-center justify-content-between">
         <div class="fw-semibold fs-5">
           <i class="bi bi-chat-quote me-2"></i>Quote
@@ -87,11 +141,11 @@
         {% if quote_error %}
           <div class="text-danger">{{ quote_error }}</div>
         {% elif quote_data %}
-          <div class="text-muted small mb-2">
-            {{ quote_data.category|default:"daily"|title }}
+          <div class="quote-card mt-2">
+            <div class="quote-mark">“</div>
+            <div class="fs-5">{{ quote_data.quote|truncatechars:220 }}</div>
+            <div class="text-muted mt-2">— {{ quote_data.author }}</div>
           </div>
-          <div class="mb-2">“{{ quote_data.quote }}”</div>
-          <div class="text-muted">— {{ quote_data.author }}</div>
         {% else %}
           <div class="text-muted">No data yet.</div>
         {% endif %}
@@ -100,40 +154,4 @@
   </div>
 </div>
 
-<!-- Recent Activity -->
-<div class="mt-4">
-  <div class="bg-white rounded-4 shadow-sm p-4">
-    <div class="d-flex align-items-center justify-content-between mb-3">
-      <div class="fw-semibold fs-5">
-        <i class="bi bi-clock-history me-2"></i>Recent activity
-      </div>
-
-      <form method="post" action="{% url 'clear_history' %}">
-        {% csrf_token %}
-        <button class="btn btn-outline-dark btn-sm">Clear</button>
-      </form>
-    </div>
-
-    <div class="d-grid gap-2">
-      {% for s in recent_searches %}
-        <div class="d-flex align-items-center justify-content-between p-3 border rounded-3">
-          <div class="d-flex align-items-center gap-2">
-            {% if s.search_type == "weather" %}
-              <span class="badge text-bg-primary">Weather</span>
-            {% else %}
-              <span class="badge text-bg-dark">Horoscope</span>
-            {% endif %}
-            <div class="fw-semibold">{{ s.query }}</div>
-          </div>
-
-          <div class="text-muted small">
-            {{ s.created_at|date:"M d, H:i" }}
-          </div>
-        </div>
-      {% empty %}
-        <div class="text-muted">No activity yet. Search weather or horoscope to see history here.</div>
-      {% endfor %}
-    </div>
-  </div>
-</div>
 {% endblock %}

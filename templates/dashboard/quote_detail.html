@@ -1,47 +1,58 @@
 {% extends "base.html" %}
-{% block title %}Quotes | SmartInsight{% endblock %}
+{% block title %}Quote | SmartInsight{% endblock %}
 
 {% block content %}
-<div class="bg-white rounded-4 shadow-sm p-4">
-  <div class="d-flex justify-content-between align-items-center">
-    <h3 class="fw-bold mb-0">Quotes</h3>
-    <a href="{% url 'dashboard_home' %}" class="text-decoration-none">← Back</a>
+
+<div class="mb-4 d-flex justify-content-between align-items-center">
+  <div>
+    <div class="text-muted small">Quote • Deep View</div>
+    <h2 class="fw-bold mb-0">Daily Perspective</h2>
   </div>
+  <a href="{% url 'dashboard_home' %}" class="text-decoration-none">← Back</a>
+</div>
 
-  <form class="mt-3 d-flex gap-2" method="get">
-    <input class="form-control" name="category" value="{{ category }}" placeholder="Optional category (e.g., success)" />
-    <button class="btn btn-dark">Get quote</button>
-  </form>
+{% if error %}
+  <div class="alert alert-danger rounded-4">{{ error }}</div>
+{% else %}
 
-  <div class="mt-4">
-    {% if error %}
-      <div class="text-danger">{{ error }}</div>
-    {% elif data %}
-      <div class="fs-5">“{{ data.quote }}”</div>
-      <div class="text-muted mt-2">— {{ data.author }}</div>
-
-      <form method="post" action="{% url 'save_quote' %}" class="mt-3">
-        {% csrf_token %}
-        <input type="hidden" name="quote" value="{{ data.quote }}">
-        <input type="hidden" name="author" value="{{ data.author }}">
-        <input type="hidden" name="category" value="{{ data.category }}">
-        <button class="btn btn-outline-dark">Save to favorites</button>
-      </form>
+  <div class="bg-white rounded-4 shadow-sm p-5 mb-4 text-center">
+    {% if data %}
+      <div class="display-6 fw-light mb-4">
+        “{{ data.quote }}”
+      </div>
+      <div class="fw-semibold">— {{ data.author }}</div>
+      <div class="text-muted small mt-2">
+        {{ data.category|title }}
+      </div>
     {% endif %}
   </div>
 
-  <hr class="my-4"/>
-
-  <h6 class="fw-semibold mb-3">Recent quotes</h6>
-  <div class="d-grid gap-2">
-    {% for q in recent %}
-      <div class="p-3 border rounded-3">
-        <div>“{{ q.quote }}”</div>
-        <div class="text-muted mt-1">— {{ q.author }}</div>
+  {% if author_info %}
+    <div class="bg-white rounded-4 shadow-sm p-4 mb-4">
+      <div class="fw-semibold fs-5 mb-2">
+        <i class="bi bi-person-circle me-2"></i>About the Author
       </div>
-    {% empty %}
-      <div class="text-muted">No history yet.</div>
-    {% endfor %}
-  </div>
-</div>
+      <div class="text-muted">
+        {{ author_info }}
+      </div>
+    </div>
+  {% endif %}
+
+  {% if photos %}
+    <div class="row g-3">
+      {% for p in photos %}
+        <div class="col-12 col-md-4">
+          <div class="rounded-4 overflow-hidden shadow-sm">
+            <img src="{{ p }}"
+                 class="img-fluid"
+                 style="height:220px; width:100%; object-fit:cover;"
+                 loading="lazy">
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+  {% endif %}
+
+{% endif %}
+
 {% endblock %}
