@@ -4,7 +4,9 @@
 
 
 
-🚀 SmartInsight — Understanding APIs Through a Real Product
+ SmartInsight — Understanding APIs Through a Real Product
+
+
 
 SmartInsight is a Django-based web application built to demonstrate how APIs work in real-world applications.
 
@@ -39,6 +41,7 @@ Caching strategies
 Combining multiple APIs into one coherent system
 
 🧠 What This Project Demonstrates
+
 1️⃣ How APIs Work (Practical Understanding)
 
 This project consumes multiple external APIs:
@@ -98,6 +101,7 @@ Images → cached for 6 hours
 Django’s cache framework is used.
 
 🎯 Key Features
+
 🌤 Weather Dashboard
 
 Live temperature
