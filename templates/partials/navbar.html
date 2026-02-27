@@ -1,28 +1,44 @@
-<nav class="navbar navbar-expand-lg navbar-light bg-white shadow-sm border-bottom">
+<nav class="navbar navbar-expand-lg bg-white border-bottom shadow-sm">
   <div class="container">
-    <a class="navbar-brand fw-bold text-primary" href="/">SmartInsight</a>
+    <a class="navbar-brand fw-bold text-primary d-flex align-items-center gap-2" href="{% url 'dashboard_home' %}">
+      <i class="bi bi-stars"></i> SmartInsight
+    </a>
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#nav">
       <span class="navbar-toggler-icon"></span>
     </button>
 
     <div class="collapse navbar-collapse" id="nav">
-      <ul class="navbar-nav ms-auto align-items-center">
+      <ul class="navbar-nav ms-auto align-items-lg-center gap-lg-1">
         {% if user.is_authenticated %}
-          <li class="nav-item">
-            <a class="nav-link px-3" href="/dashboard/">Dashboard</a>
-          </li>
-
-           <li class="nav-item">
-  <a class="nav-link px-3" href="{% url 'profile_settings' %}">Profile</a>
-</li>
 
           <li class="nav-item">
-            <a class="nav-link px-3" href="/favorites/">Favorites</a>
+            <a class="nav-link px-3 {% if request.path|slice:':11' == '/dashboard/' %}fw-semibold text-primary{% endif %}"
+               href="{% url 'dashboard_home' %}">
+              Dashboard
+            </a>
           </li>
+
           <li class="nav-item">
-            <a class="nav-link px-3" href="/logout/">Logout</a>
+            <a class="nav-link px-3 {% if request.path|slice:':9' == '/profile/' %}fw-semibold text-primary{% endif %}"
+               href="{% url 'profile_settings' %}">
+              Profile
+            </a>
           </li>
+
+          <li class="nav-item">
+            <a class="nav-link px-3 {% if request.path|slice:':11' == '/favorites/' %}fw-semibold text-primary{% endif %}"
+               href="/favorites/">
+              Favorites
+            </a>
+          </li>
+
+          <li class="nav-item">
+            <a class="nav-link px-3" href="/logout/">
+              Logout
+            </a>
+          </li>
+
         {% else %}
           <li class="nav-item">
             <a class="nav-link px-3" href="/login/">Login</a>

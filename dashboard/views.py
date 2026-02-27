@@ -59,14 +59,18 @@ def dashboard_home(request):
     city = (request.GET.get("city") or default_city).strip()
     zodiac = (request.GET.get("zodiac") or default_zodiac).strip().lower()
 
-    weather_data, horoscope_data, quote_data = None, None, None
-    weather_error, horoscope_error, quote_error = None, None, None
-
+    # --- cache keys ---
     weather_key = f"weather:{city.lower()}"
     horoscope_key = f"horoscope:{zodiac}"
     quote_key = "quote:daily"
 
+    # --- result containers ---
+    weather_data, horoscope_data, quote_data = None, None, None
+    weather_error, horoscope_error, quote_error = None, None, None
+
+    # =========================
     # Weather (cache 10 min)
+    # =========================
     weather_data = cache.get(weather_key)
     if weather_data is None:
         try:
@@ -76,10 +80,10 @@ def dashboard_home(request):
         except APIError as e:
             weather_error = str(e)
 
-    # ✅ Weather tip + rain mode (for animation)
+    # ✅ Weather tip + weather mode (for hero animation)
     weather_tip = "Balanced weather. Perfect for steady progress today ✅"
-    is_rainy = False
     weather_mode = "mild"  # mild | sunny | cloudy | rainy
+    is_rainy = False
 
     if weather_data:
         temp = weather_data.get("temp")
@@ -87,7 +91,7 @@ def dashboard_home(request):
         humidity = weather_data.get("humidity")
         wind = weather_data.get("wind_speed")
 
-        # detect rain vibe (rule-based)
+        # detect rainy vibe
         if isinstance(cloud, (int, float)) and isinstance(humidity, (int, float)):
             is_rainy = cloud >= 80 and humidity >= 75
 
@@ -107,7 +111,9 @@ def dashboard_home(request):
             weather_mode = "mild"
             weather_tip = "Windy outside 🌬️ Secure loose items and wear a light jacket."
 
+    # =========================
     # Horoscope (cache 6 hours)
+    # =========================
     horoscope_data = cache.get(horoscope_key)
     if horoscope_data is None:
         try:
@@ -117,7 +123,9 @@ def dashboard_home(request):
         except APIError as e:
             horoscope_error = str(e)
 
+    # =========================
     # Quote (cache 1 hour)
+    # =========================
     quote_data = cache.get(quote_key)
     if quote_data is None:
         try:
@@ -126,13 +134,16 @@ def dashboard_home(request):
         except APIError as e:
             quote_error = str(e)
 
-    # ✅ DAILY BRIEF (rule-based)
+    # =========================
+    # Daily brief (rule-based)
+    # =========================
     daily_brief = "Today is steady and balanced."
 
     if horoscope_data and weather_data:
         element = (ZODIAC_TRAITS.get(zodiac) or {}).get("element", "")
         temp = weather_data.get("temp")
         humidity = weather_data.get("humidity")
+        cloud = weather_data.get("cloud_pct")
 
         mood_map = {
             "Fire": "Push forward with bold decisions.",
@@ -140,7 +151,6 @@ def dashboard_home(request):
             "Air": "Communicate clearly and avoid assumptions.",
             "Earth": "Focus on structure and practical wins.",
         }
-
         mood = mood_map.get(element, "Stay balanced and composed.")
 
         weather_note = ""
@@ -152,13 +162,16 @@ def dashboard_home(request):
             else:
                 weather_note = "Conditions are balanced today."
 
+        if isinstance(cloud, (int, float)) and cloud >= 75:
+            weather_note += " Cloud cover may slow momentum."
+
         humidity_note = ""
         if isinstance(humidity, (int, float)) and humidity > 70:
-            humidity_note = "Energy may feel heavier than usual."
+            humidity_note = " Energy may feel heavier than usual."
 
-        daily_brief = f"{mood} {weather_note} {humidity_note}".strip()
+        daily_brief = f"{mood} {weather_note}{humidity_note}".strip()
 
-    recent_searches = SearchHistory.objects.filter(user=request.user)[:6]
+    recent_searches = SearchHistory.objects.filter(user=request.user).order_by("-id")[:6]
 
     return render(request, "dashboard/home.html", {
         "city": city,
@@ -168,8 +181,8 @@ def dashboard_home(request):
         "weather_data": weather_data,
         "weather_error": weather_error,
         "weather_tip": weather_tip,
-        "is_rainy": is_rainy,
         "weather_mode": weather_mode,
+        "is_rainy": is_rainy,
 
         "horoscope_data": horoscope_data,
         "horoscope_error": horoscope_error,
@@ -179,14 +192,12 @@ def dashboard_home(request):
 
         "recent_searches": recent_searches,
         "daily_brief": daily_brief,
-        
-        
     })
 
 
 @login_required
 def weather_detail(request):
-    city = request.GET.get("city", "Nairobi").strip()
+    city = (request.GET.get("city") or "Nairobi").strip()
 
     weather, weather_error = None, None
     trend, trend_error = [], None
@@ -208,9 +219,23 @@ def weather_detail(request):
     except APIError as e:
         weather_error = str(e)
 
-    # Images via Pexels (cached)
+    # Weather mode for the page (optional use)
+    weather_mode = "mild"
+    if weather:
+        temp = weather.get("temp")
+        cloud = weather.get("cloud_pct")
+        humidity = weather.get("humidity")
+
+        if isinstance(cloud, (int, float)) and isinstance(humidity, (int, float)) and cloud >= 80 and humidity >= 75:
+            weather_mode = "rainy"
+        elif isinstance(temp, (int, float)) and temp >= 27:
+            weather_mode = "sunny"
+        elif isinstance(cloud, (int, float)) and cloud >= 70:
+            weather_mode = "cloudy"
+
+    # Pexels images (cached) — safe fallback
     photos, photos_error = [], None
-    photo_cache_key = f"pexels:weather:{city.lower().strip()}"
+    photo_cache_key = f"pexels:weather:{city.lower()}"
     cached = cache.get(photo_cache_key)
 
     if cached is not None:
@@ -218,10 +243,9 @@ def weather_detail(request):
     else:
         try:
             raw = []
-            raw += search_photos(f"{city} city skyline", per_page=3)
-            raw += search_photos(f"{city} street road", per_page=3)
-            raw += search_photos(f"{city} countryside farm", per_page=3)
-            raw += search_photos(f"{city} nature landscape", per_page=3)
+            raw += search_photos(f"{city} city skyline", per_page=4)
+            raw += search_photos(f"{city} street road", per_page=4)
+            raw += search_photos(f"{city} landscape", per_page=4)
 
             seen = set()
             unique = []
@@ -232,12 +256,11 @@ def weather_detail(request):
 
             photos = unique[:9]
             cache.set(photo_cache_key, photos, timeout=6 * 60 * 60)
+
         except PexelsError as e:
             photos_error = str(e)
-            photos = []
         except Exception:
             photos_error = "Image service unavailable."
-            photos = []
 
     labels = [d["date"] for d in trend]
     max_t = [d["max"] for d in trend]
@@ -259,22 +282,23 @@ def weather_detail(request):
         "chart_max": max_t,
         "chart_min": min_t,
         "chart_precip": precip,
+
+        "weather_mode": weather_mode,
     })
 
 
 @login_required
 def horoscope_detail(request):
-    zodiac = request.GET.get("zodiac", "aries").strip().lower()
+    zodiac = (request.GET.get("zodiac") or "aries").strip().lower()
 
     data, error = None, None
     traits = ZODIAC_TRAITS.get(zodiac)
 
     # Photos via Pexels (cached)
-    photos_error = None
-    photos = []
+    photos, photos_error = [], None
     photo_cache_key = f"pexels:horoscope:{zodiac}"
-
     cached = cache.get(photo_cache_key)
+
     if cached is not None:
         photos = cached
     else:
@@ -293,13 +317,13 @@ def horoscope_detail(request):
 
             photos = unique[:9]
             cache.set(photo_cache_key, photos, timeout=6 * 60 * 60)
+
         except PexelsError as e:
             photos_error = str(e)
-            photos = []
         except Exception:
             photos_error = "Image service unavailable."
-            photos = []
 
+    # Horoscope content
     try:
         data = get_horoscope(zodiac)
     except APIError as e:
@@ -313,6 +337,8 @@ def horoscope_detail(request):
             "focus": traits.get("focus"),
         }
 
+    zodiac_element = (traits.get("element", "Air") if traits else "Air").lower()
+
     return render(request, "dashboard/horoscope_detail.html", {
         "zodiac": zodiac,
         "data": data,
@@ -321,16 +347,17 @@ def horoscope_detail(request):
         "spotlight": spotlight,
         "photos": photos,
         "photos_error": photos_error,
+        "zodiac_element": zodiac_element,
     })
 
 
 @login_required
 def quote_detail(request):
-    category = request.GET.get("category", "")
+    category = request.GET.get("category", "").strip()
+
     data, error = None, None
     author_info = None
-    photos = []
-    photos_error = None
+    photos, photos_error = [], None
 
     try:
         data = get_random_quote(category=category if category else None)
@@ -343,14 +370,16 @@ def quote_detail(request):
         )
 
         if data and data.get("author"):
-            author_info = get_wikipedia_summary(data["author"])
+            author = data["author"]
+            author_info = get_wikipedia_summary(author)
 
-            cache_key = f"pexels:author:{data['author']}"
+            cache_key = f"pexels:author:{author.lower()}"
             cached = cache.get(cache_key)
+
             if cached:
                 photos = cached
             else:
-                raw = search_photos(f"{data['author']} portrait", per_page=6)
+                raw = search_photos(f"{author} portrait", per_page=6)
                 photos = raw[:6]
                 cache.set(cache_key, photos, timeout=6 * 60 * 60)
 
@@ -359,7 +388,7 @@ def quote_detail(request):
     except PexelsError:
         photos_error = "Image service unavailable."
 
-    recent = QuoteHistory.objects.filter(user=request.user)[:8]
+    recent = QuoteHistory.objects.filter(user=request.user).order_by("-id")[:8]
 
     return render(request, "dashboard/quote_detail.html", {
         "data": data,
@@ -375,19 +404,19 @@ def quote_detail(request):
 @login_required
 @require_POST
 def save_quote(request):
-    quote = request.POST.get("quote", "")
-    author = request.POST.get("author", "")
-    category = request.POST.get("category", "")
+    quote = (request.POST.get("quote") or "").strip()
+    author = (request.POST.get("author") or "").strip()
+    category = (request.POST.get("category") or "").strip()
 
-    if not quote.strip():
+    if not quote:
         messages.error(request, "Nothing to save.")
         return redirect("quote_detail")
 
     QuoteFavorite.objects.get_or_create(
         user=request.user,
-        quote=quote.strip(),
-        author=(author or "").strip(),
-        category=(category or "").strip(),
+        quote=quote,
+        author=author,
+        category=category,
     )
 
     messages.success(request, "Saved to favorites.")

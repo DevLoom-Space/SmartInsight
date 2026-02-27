@@ -14,6 +14,8 @@
       body { background: #f6f7fb; }
       .shadow-soft { box-shadow: 0 12px 30px rgba(16, 24, 40, .08); }
       .card-soft { border: 1px solid rgba(0,0,0,.06); }
+      .lift { transition: transform .18s ease, box-shadow .18s ease; }
+      .lift:hover { transform: translateY(-2px); box-shadow: 0 14px 34px rgba(16,24,40,.10); }
 
       /* ---------- Weather hero backgrounds ---------- */
       .weather-hero{
@@ -112,7 +114,7 @@
         to{ transform: translateY(420px); opacity:0; }
       }
 
-      /* ---------- Mode logic (what shows in each weather mode) ---------- */
+      /* ---------- Mode logic ---------- */
       .weather-hero.is-sunny .wx-rain{ opacity:0; }
       .weather-hero.is-cloudy .wx-sun{ opacity:.35; }
       .weather-hero.is-cloudy .wx-rain{ opacity:0; }
@@ -133,21 +135,19 @@
         opacity:.14;
       }
 
-      /* ---------- Tiny micro polish ---------- */
+      /* ---------- Micro polish ---------- */
       .badge-glass{
         background: rgba(255,255,255,.65);
         border: 1px solid rgba(0,0,0,.08);
         backdrop-filter: blur(6px);
       }
 
-      /* Mobile tuning */
       @media(max-width: 576px){
         .wx-sun{ right:20px; width:90px; height:90px; }
       }
     </style>
 
     <script>
-      // distribute raindrops deterministically (no libs)
       document.addEventListener("DOMContentLoaded", () => {
         document.querySelectorAll(".wx-rain .drop").forEach((d, idx) => {
           d.style.setProperty("--i", (idx % 20) / 20);
